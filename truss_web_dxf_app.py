@@ -1,9 +1,7 @@
-
 import streamlit as st
 import numpy as np
 import matplotlib.pyplot as plt
 import ezdxf
-from io import BytesIO
 
 st.set_page_config(layout="wide")
 st.title("DXF-Based Truss Analysis Web App")
@@ -13,7 +11,7 @@ dxf_file = st.sidebar.file_uploader("Upload a DXF file", type=["dxf"])
 
 if dxf_file:
     # Read DXF file
-    doc = ezdxf.read(dxf_file)
+    doc = ezdxf.read(stream=dxf_file)
     msp = doc.modelspace()
 
     # Extract unique nodes and lines
@@ -51,7 +49,6 @@ if dxf_file:
         ax.text(x, y, f"N{i+1}", fontsize=8, ha='right')
     ax.set_aspect('equal')
     ax.set_title("Truss Shape from DXF")
-    plt.tight_layout()
     st.pyplot(fig)
 
     # Input table for cross-sectional area and Young's modulus
@@ -60,12 +57,12 @@ if dxf_file:
     for i in range(len(member_lines)):
         cols = st.columns(3)
         cols[0].write(f"Member M{i+1}")
-        A = cols[1].number_input(f"Area (A) for M{i+1}", value=1.0, format="%.4f", key=f"A_{i}")
-        E = cols[2].number_input(f"Modulus (E) for M{i+1}", value=29000.0, format="%.1f", key=f"E_{i}")
+        A = cols[1].number_input(f"Area_{i}", value=1.0, format="%.4f", key=f"A_{i}")
+        E = cols[2].number_input(f"E_{i}", value=29000.0, format="%.1f", key=f"E_{i}")
         member_data.append((A, E))
 
     if st.button("Run Analysis"):
-        # Step 1: Assemble nodes and members
+        # Assemble nodes and members
         nodes = [{'index': i, 'x': x, 'y': y} for i, (x, y) in enumerate(node_coords)]
         members = []
         for i, ((n1, n2), (A, E)) in enumerate(zip(member_lines, member_data)):
@@ -75,11 +72,10 @@ if dxf_file:
             t = np.arctan2(dy, dx)
             members.append({'index': i, 'n1': n1, 'n2': n2, 'A': A, 'E': E, 'l': l, 't': t})
 
-        # Assume all nodes are "free" and zero loads for simplicity
         dof_map = [True for _ in range(len(nodes)*2)]
         F = np.zeros(len(nodes)*2)
 
-        # Step 2: Global stiffness matrix
+        # Global stiffness matrix
         dof = 2 * len(nodes)
         Kg = np.zeros((dof, dof))
         for mem in members:
@@ -109,7 +105,7 @@ if dxf_file:
                 Q_full[i] = Q_r[idx]
                 idx += 1
 
-        # Step 3: Stresses
+        # Stresses
         stresses = []
         for mem in members:
             c, s = np.cos(mem['t']), np.sin(mem['t'])
@@ -119,7 +115,7 @@ if dxf_file:
             stress = (mem['E'] / mem['l']) * B.dot(d)
             stresses.append(stress)
 
-        # Step 4: Results
+        # Results
         st.subheader("4. Results")
         st.write("### Global Stiffness Matrix")
         st.dataframe(Kg)
@@ -148,5 +144,4 @@ if dxf_file:
         ax.set_xlabel("X (in)")
         ax.set_ylabel("Y (in)")
         ax.grid(True)
-        plt.tight_layout()
         st.pyplot(fig)
