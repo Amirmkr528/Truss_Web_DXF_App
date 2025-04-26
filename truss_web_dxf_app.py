@@ -1,8 +1,4 @@
-from pathlib import Path
-import zipfile
 
-# Streamlit app code that reads a DXF file and performs truss analysis
-dxf_web_app_code = '''
 import streamlit as st
 import numpy as np
 import matplotlib.pyplot as plt
@@ -17,7 +13,7 @@ dxf_file = st.sidebar.file_uploader("Upload a DXF file", type=["dxf"])
 
 if dxf_file:
     # Read DXF file
-    doc = ezdxf.read(stream=dxf_file)
+    doc = ezdxf.read(dxf_file)
     msp = doc.modelspace()
 
     # Extract unique nodes and lines
@@ -55,6 +51,7 @@ if dxf_file:
         ax.text(x, y, f"N{i+1}", fontsize=8, ha='right')
     ax.set_aspect('equal')
     ax.set_title("Truss Shape from DXF")
+    plt.tight_layout()
     st.pyplot(fig)
 
     # Input table for cross-sectional area and Young's modulus
@@ -63,8 +60,8 @@ if dxf_file:
     for i in range(len(member_lines)):
         cols = st.columns(3)
         cols[0].write(f"Member M{i+1}")
-        A = cols[1].number_input(f"A{i}", label_visibility="collapsed", value=1.0, format="%.4f", key=f"A_{i}")
-        E = cols[2].number_input(f"E{i}", label_visibility="collapsed", value=29000.0, format="%.1f", key=f"E_{i}")
+        A = cols[1].number_input(f"Area (A) for M{i+1}", value=1.0, format="%.4f", key=f"A_{i}")
+        E = cols[2].number_input(f"Modulus (E) for M{i+1}", value=29000.0, format="%.1f", key=f"E_{i}")
         member_data.append((A, E))
 
     if st.button("Run Analysis"):
@@ -145,10 +142,11 @@ if dxf_file:
         for i, node in enumerate(nodes):
             dx, dy = Q_full[2*i], Q_full[2*i+1]
             ax.plot(node['x'], node['y'], 'ko')
-            ax.text(node['x'], node['y'], f"N{i+1}\\n({dx:.4f},{dy:.4f})", fontsize=8)
+            ax.text(node['x'], node['y'], f"N{i+1}\n({dx:.4f},{dy:.4f})", fontsize=8)
         ax.set_aspect('equal')
         ax.set_title("Truss Analysis Result")
         ax.set_xlabel("X (in)")
         ax.set_ylabel("Y (in)")
         ax.grid(True)
+        plt.tight_layout()
         st.pyplot(fig)
